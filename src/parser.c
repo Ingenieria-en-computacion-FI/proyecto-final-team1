@@ -106,3 +106,62 @@ Operand parse_memory_operand(Token** current) {
 
     return mem_op;
 }
+
+// Parsea una instrucción completa (Mnemónico + Operandos)
+Instruction parse_instruction(Token** current) {
+    Instruction inst;
+    memset(&inst, 0, sizeof(Instruction)); // Limpiar estructura
+    
+    // 1. Guardar el mnemónico (ej. "MOV", "ADD")
+    strncpy(inst.mnemonic, (*current)->value, sizeof(inst.mnemonic) - 1);
+    advance(current);
+    
+    // 2. Revisar si hay operandos antes de que acabe la línea
+    if ((*current)->type != TOK_NEWLINE && (*current)->type != TOK_EOF) {
+        
+        // Parsear el primer operando (destino)
+        inst.op1 = parse_operand(current);
+        inst.operand_count = 1;
+        
+        // 3. Validación sintáctica: Si hay más texto, DEBE haber una coma
+        if ((*current)->type == TOK_COMMA) {
+            advance(current); // Consumir la coma
+            
+            // Parsear el segundo operando (origen)
+            inst.op2 = parse_operand(current);
+            inst.operand_count = 2;
+        } else if ((*current)->type != TOK_NEWLINE && (*current)->type != TOK_EOF) {
+            printf("Error de sintaxis: Se esperaba una coma ',' después del operando.\n");
+            exit(1);
+        }
+    }
+    
+    return inst;
+}
+
+// Parsea directivas de ensamblador
+Directive parse_directive(Token** current) {
+    Directive dir;
+    memset(&dir, 0, sizeof(Directive));
+    
+    // Guardar el nombre de la directiva (ej. "SECTION", "DB")
+    strncpy(dir.name, (*current)->value, sizeof(dir.name) - 1);
+    advance(current);
+    
+    // Leer argumentos hasta encontrar un salto de línea o EOF
+    while ((*current)->type != TOK_NEWLINE && (*current)->type != TOK_EOF) {
+        // Ignorar comas si la directiva tiene varios parámetros (Ej: DB 10, 20)
+        if ((*current)->type == TOK_COMMA) {
+            advance(current);
+            continue;
+        }
+        
+        if (dir.arg_count < 4) {
+            strncpy(dir.arguments[dir.arg_count], (*current)->value, 31);
+            dir.arg_count++;
+        }
+        advance(current);
+    }
+    
+    return dir;
+}
