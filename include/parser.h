@@ -53,4 +53,15 @@ Instruction parse_instruction(Token** current_token);
 Operand parse_operand(Token** current_token);
 Operand parse_memory_operand(Token** current_token);
 
+// Estructura para almacenar directivas (Ej: SECTION .data, DB 10)
+typedef struct {
+    char name[16];        // Ej: "SECTION", "DB"
+    char arguments[4][32]; // Hasta 4 argumentos de texto
+    int arg_count;
+} Directive;
+
+// Firma de las funciones restantes
+Instruction parse_instruction(Token** current_token);
+Directive parse_directive(Token** current_token);
+
 #endif
