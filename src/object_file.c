@@ -125,3 +125,37 @@ void dump_object_file(const char* filename)
 
     fclose(fp);
 }
+/*
+ * Lee un archivo objeto y devuelve el bloque de código máquina.
+ * El llamador debe liberar *code con free().
+ */
+int read_object_file(const char* filename,
+                     uint8_t** code,
+                     uint32_t* code_size)
+{
+    FILE* fp = fopen(filename, "rb");
+    if (!fp) {
+        printf("Error: no se pudo abrir %s\n", filename);
+        return 0;
+    }
+
+    ObjectHeader hdr;
+    if (fread(&hdr, sizeof(hdr), 1, fp) != 1 || hdr.magic != OBJ_MAGIC) {
+        printf("Error: formato objeto invalido en %s\n", filename);
+        fclose(fp);
+        return 0;
+    }
+
+    *code = (uint8_t*)malloc(hdr.code_size);
+    if (!*code) {
+        printf("Error: sin memoria para leer %s\n", filename);
+        fclose(fp);
+        return 0;
+    }
+
+    fread(*code, 1, hdr.code_size, fp);
+    *code_size = hdr.code_size;
+
+    fclose(fp);
+    return 1;
+}
