@@ -1,5 +1,6 @@
 #include "../include/backend.h"
 #include <string.h>
+#include <strings.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -14,7 +15,7 @@ uint32_t location_counter = 0;
 char current_section[10] = ".text"; // Sección por defecto obligatoria
 
 // Control de Location Counters por sección (.text, .data, .bss)
-uint32_t section_lc[3] = {0, 0, 0}; 
+uint32_t section_lc[3] = {0, 0, 0};
 int indice_seccion_actual = 0; // 0 = .text, 1 = .data, 2 = .bss
 
 // Busca un símbolo en la tabla. Devuelve el índice o -1 si no existe.
@@ -27,15 +28,14 @@ int symbol_lookup(const char* name) {
     return -1;
 }
 
-// Inserta un nuevo símbolo. Retorna false si hay redefinición (Manejo de Errores Semánticos).
+// Inserta un nuevo símbolo. Retorna false si hay redefinición.
 bool symbol_insert(const char* name, uint32_t address, const char* section, bool is_extern, bool is_global) {
     int idx = symbol_lookup(name);
     if (idx != -1) {
-        // Error: Redefinición de símbolo detectada en la primera pasada
         printf("Error Semantico: El simbolo '%s' ya fue definido.\n", name);
-        return false; 
+        return false;
     }
-    
+
     if (symbol_count >= MAX_SYMBOLS) {
         printf("Error: Tabla de simbolos llena.\n");
         return false;
@@ -46,7 +46,7 @@ bool symbol_insert(const char* name, uint32_t address, const char* section, bool
     strcpy(symbol_table[symbol_count].section, section);
     symbol_table[symbol_count].is_extern = is_extern;
     symbol_table[symbol_count].is_global = is_global;
-    
+
     symbol_count++;
     return true;
 }
@@ -57,12 +57,12 @@ void fixup_add(const char* symbol_name, uint32_t patch_pos, uint32_t size, const
         printf("Error: Tabla de fixups llena.\n");
         return;
     }
-    
+
     strcpy(fixup_table[fixup_count].symbol_name, symbol_name);
     fixup_table[fixup_count].patch_pos = patch_pos;
     fixup_table[fixup_count].size = size;
     strcpy(fixup_table[fixup_count].section, section);
-    
+
     fixup_count++;
 }
 
@@ -79,13 +79,10 @@ void fixup_resolve_all(uint8_t* code_buffer) {
         uint32_t patch_pos = fixup_table[i].patch_pos;
         uint32_t valor_a_inyectar = target_address;
 
-        // CORRECCIÓN IA-32: Si el parche ocurre en la sección ejecutable (.text), 
-        // calculamos el desplazamiento relativo en lugar de la dirección absoluta.
         if (strcmp(fixup_table[i].section, ".text") == 0) {
             valor_a_inyectar = target_address - (patch_pos + fixup_table[i].size);
         }
 
-        // Inyectamos el valor en formato Little Endian dentro del buffer del código máquina
         if (fixup_table[i].size == 1) {
             code_buffer[patch_pos] = (uint8_t)(valor_a_inyectar & 0xFF);
         } else if (fixup_table[i].size == 4) {
@@ -94,46 +91,41 @@ void fixup_resolve_all(uint8_t* code_buffer) {
             code_buffer[patch_pos + 2] = (uint8_t)((valor_a_inyectar >> 16) & 0xFF);
             code_buffer[patch_pos + 3] = (uint8_t)((valor_a_inyectar >> 24) & 0xFF);
         }
-        printf("Fixup aplicado con exito: Simbolo '%s' en pos %u con valor relativo %d\n", 
+        printf("[BACKEND] Fixup aplicado: Simbolo '%s' en pos %u con valor %d\n",
                fixup_table[i].symbol_name, patch_pos, (int32_t)valor_a_inyectar);
     }
 }
 
-// Administra y segmenta los contadores de posición individuales por sección (.text, .data, .bss)
+// Administra y segmenta los contadores de posición individuales por sección
 void cambiar_de_seccion(const char* nueva_seccion) {
-    // 1. Guardar el progreso del Location Counter de la sección activa
     section_lc[indice_seccion_actual] = location_counter;
-
-    // 2. Mapear y cambiar al contexto de la nueva sección
     strncpy(current_section, nueva_seccion, sizeof(current_section) - 1);
-    
-    if (strcmp(nueva_seccion, ".text") == 0) {
+
+    // CORRECCIÓN DEFINITIVA: strcasecmp para ignorar diferencias entre .text y .TEXT
+    if (strcasecmp(nueva_seccion, ".text") == 0) {
         indice_seccion_actual = 0;
-    } else if (strcmp(nueva_seccion, ".data") == 0) {
+    } else if (strcasecmp(nueva_seccion, ".data") == 0) {
         indice_seccion_actual = 1;
-    } else if (strcmp(nueva_seccion, ".bss") == 0) {
+    } else if (strcasecmp(nueva_seccion, ".bss") == 0) {
         indice_seccion_actual = 2;
     } else {
         printf("Error: Seccion '%s' no reconocida.\n", nueva_seccion);
         return;
     }
 
-    // 3. Restaurar el Location Counter acumulado en el nuevo bloque destino
     location_counter = section_lc[indice_seccion_actual];
     printf("[BACKEND] Cambiando a seccion %s. LC restaurado en: %u\n", current_section, location_counter);
 }
 
-// Función auxiliar para estimar preliminarmente el peso de la instrucción en la Pasada 1
 uint32_t estimate_instruction_size(const char* mnemonic, int op_count) {
     if (strcmp(mnemonic, "NOP") == 0 || strcmp(mnemonic, "RET") == 0) {
-        return 1; // Opcodes de un solo byte
+        return 1;
     }
-    if (strcmp(mnemonic, "JMP") == 0 || mnemonic[0] == 'J') { 
-        // Estimación estándar de IA-32 para saltos condicionales y absolutos directos largos
-        return 5; // 1 byte de Opcode + 4 bytes de desplazamiento relativo
+    if (strcmp(mnemonic, "JMP") == 0 || mnemonic[0] == 'J') {
+        return 5;
     }
     if (strcmp(mnemonic, "MOV") == 0) {
-        if (op_count == 2) return 5; // Opcode + ModRM + Inmediato/Desplazamiento base
+        if (op_count == 2) return 5;
     }
-    return 3; // Estimación genérica de resguardo para desarrollo estructural
+    return 3;
 }
