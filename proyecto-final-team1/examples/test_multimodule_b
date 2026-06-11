@@ -1,0 +1,7 @@
+SECTION .text
+GLOBAL RUTINA_B
+
+RUTINA_B:
+    MOV EBX, 150
+    ADD EAX, EBX
+    RET
