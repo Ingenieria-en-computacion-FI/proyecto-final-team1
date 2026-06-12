@@ -1,1 +1,4 @@
-El proyecto se encuentra en la carpeta "proyecto-final-team1", las demás carpetas son los archivos originales, es decir, aquellos que no recibieron modificaciones, los de la carpeta anteriormente mencionada están modificados de tal forma que ya estan enlazados correctamente.
+El proyecto se encuentra en la carpeta "proyecto-final-team1", 
+las demás carpetas son los archivos originales, es decir, 
+aquellos que no recibieron modificaciones, los de la carpeta anteriormente mencionada 
+están modificados de tal forma que ya estan enlazados correctamente.
