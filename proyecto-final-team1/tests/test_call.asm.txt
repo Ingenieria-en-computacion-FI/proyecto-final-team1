@@ -1,0 +1,15 @@
+SECTION .text
+GLOBAL _START
+
+_START:
+    MOV EAX, 5
+    CALL SUBRUTINA
+    JMP FIN
+
+SUBRUTINA:
+    MOV EBX, 10
+    ADD EAX, EBX
+    RET
+
+FIN:
+    NOP

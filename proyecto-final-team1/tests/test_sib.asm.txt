@@ -1,0 +1,11 @@
+SECTION .data
+ARREGLO: DB 10, 20, 30, 40
+
+SECTION .text
+GLOBAL _START
+
+_START:
+    MOV EBX, ARREGLO
+    MOV ECX, 2
+    MOV EAX, [EBX + ECX * 4]
+    NOP

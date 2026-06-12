@@ -1,0 +1,14 @@
+SECTION .text
+GLOBAL _START
+
+_START:
+    MOV EAX, 1
+    MOV EBX, 1
+    JE IGUALES
+    JMP FIN
+
+IGUALES:
+    MOV ECX, 2
+
+FIN:
+    NOP
